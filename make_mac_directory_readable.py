@@ -73,11 +73,11 @@ def parse_binary(_path):
 
 def generate_report(_global_dict, _dir):
     report_name = f'{time.strftime("%Y%m%d-%H%M%S")}_{_dir}_report'
-    folder_name = report_name[:128] if len(report_name) > 128 else report_name.replace('/', '>')
+    folder_name = report_name[1:128] if len(report_name) > 128 else report_name.replace('/', '-')
     msg = ''
     os.mkdir(f'/tmp/{folder_name}')
     for entry in _global_dict:
-        file_out = open(f'/tmp/{folder_name}/{entry.replace("/", ">")}', 'w')
+        file_out = open(f'/tmp/{folder_name}/{entry.replace("/", "-")}', 'w')
         _data = _global_dict[entry]['data']
         if isinstance(_data, dict):
             for _entry in _data:
