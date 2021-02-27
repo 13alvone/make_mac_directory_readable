@@ -1,10 +1,10 @@
-#Make Mac Directory Readable
+# Make Mac Directory Readable
 This quick tool parses through a given Mac Filesystem Directory, creating human-readable copies of each file found in a directory.
 
-##Usage
+## Usage
 `python3 make_mac_directory_readable.py -d <target_directory>`
 
-##Output
+## Output
 Human-Readable Files are output to the following location:
 
 ```/tmp/<date><directory>/files...```
