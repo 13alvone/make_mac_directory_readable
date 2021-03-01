@@ -1,4 +1,7 @@
+#!/usr/bin/env python3
+
 import subprocess
+import plistlib
 import argparse
 import sqlite3
 import time
@@ -71,6 +74,33 @@ def parse_binary(_path):
         return '!OUTPUT FAILED TO BE READ!\n'
 
 
+def global_filter(_obj):
+    if isinstance(_obj, int) or isinstance(_obj, str):
+        return f'{_obj}'
+    elif isinstance(_obj, bytes):
+        try:
+            return global_filter(plistlib.loads(_obj, fmt=None, dict_type=dict))
+        except Exception as e:
+            return global_filter(_obj.decode('utf-8', errors='ignore'))
+    elif isinstance(_obj, dict):
+        new_dict = {}
+        for key in _obj:
+            new_dict[key] = global_filter(_obj[key])
+        return new_dict
+    elif isinstance(_obj, list) or isinstance(_obj, tuple):
+        new_list = []
+        for item in _obj:
+            new_list.append(global_filter(item))
+        return new_list
+    elif isinstance(_obj, set):
+        new_set = set()
+        for item in _obj:
+            new_set.add(global_filter(item))
+        _obj = new_set
+        return _obj
+    return _obj
+
+
 def generate_report(_global_dict, _dir):
     report_name = f'{time.strftime("%Y%m%d-%H%M%S")}_{_dir}_report'
     folder_name = report_name[1:128] if len(report_name) > 128 else report_name.replace('/', '_')
@@ -78,6 +108,7 @@ def generate_report(_global_dict, _dir):
     os.mkdir(f'/tmp/{folder_name}')
     for entry in _global_dict:
         file_out = open(f'/tmp/{folder_name}/{entry.replace("/", "_")}', 'w')
+        _data = global_filter(_global_dict[entry]['data'])
         _data = _global_dict[entry]['data']
         if isinstance(_data, dict):
             for _entry in _data:
@@ -92,6 +123,7 @@ def generate_report(_global_dict, _dir):
                 pass
         file_out.write(msg)
         file_out.close()
+    print(f'[+] Report Generated. Please see the following location for converted files:\n[^] `/tmp/{folder_name}`\n')
 
 
 def cycle(_path):
