@@ -3,12 +3,15 @@
 import subprocess
 import plistlib
 import argparse
+import datetime
 import sqlite3
 import time
 import os
 
 # Global Variables
 global_dict = {}
+Indent_Level = int(16)
+Output_Set = set()
 
 
 def parse_args():
@@ -75,53 +78,43 @@ def parse_binary(_path):
 
 
 def global_filter(_obj):
-    if isinstance(_obj, int) or isinstance(_obj, str):
-        return f'{_obj}'
-    elif isinstance(_obj, bytes):
+    global Indent_Level, Output_Set
+    if isinstance(_obj, str):
+        Output_Set.add(f'{_obj}\n')
+    elif isinstance(_obj, (datetime.date, datetime.date)):
+        Output_Set.add(f'\t{" " * Indent_Level}[i] TIMESTAMP:\t{_obj}\n')
+    elif isinstance(_obj, (float, int, complex)):
+        Output_Set.add(f'\t{" " * Indent_Level}{_obj}\n')
+    elif isinstance(_obj, (list, set, slice, tuple)):
+        for _item in _obj:
+            global_filter(_item)
+    elif isinstance(_obj, dict):
+        for _entry in _obj:
+            Output_Set.add(f'\t{_entry}\n')
+            global_filter(_obj[_entry])
+    elif isinstance(_obj, (bytes, bytearray)):
         try:
             return global_filter(plistlib.loads(_obj, fmt=None, dict_type=dict))
         except Exception as e:
             return global_filter(_obj.decode('utf-8', errors='ignore'))
-    elif isinstance(_obj, dict):
-        new_dict = {}
-        for key in _obj:
-            new_dict[key] = global_filter(_obj[key])
-        return new_dict
-    elif isinstance(_obj, list) or isinstance(_obj, tuple):
-        new_list = []
-        for item in _obj:
-            new_list.append(global_filter(item))
-        return new_list
-    elif isinstance(_obj, set):
-        new_set = set()
-        for item in _obj:
-            new_set.add(global_filter(item))
-        _obj = new_set
-        return _obj
-    return _obj
+    if not isinstance(_obj, (list, set, slice, tuple)):
+        Output_Set.add(f'{"*" * 120}\n')
+    return Output_Set
 
 
 def generate_report(_global_dict, _dir):
+    global Output_Set
     report_name = f'{time.strftime("%Y%m%d-%H%M%S")}_{_dir}_report'
     folder_name = report_name[1:128] if len(report_name) > 128 else report_name.replace('/', '_')
-    msg = ''
     os.mkdir(f'/tmp/{folder_name}')
     for entry in _global_dict:
         file_out = open(f'/tmp/{folder_name}/{entry.replace("/", "_")}', 'w')
-        _data = global_filter(_global_dict[entry]['data'])
+        Output_Set = set()
+        _data_set = global_filter(_global_dict[entry]['data'])
         _data = _global_dict[entry]['data']
-        if isinstance(_data, dict):
-            for _entry in _data:
-                msg += f'[+] {_entry}\n{_data[_entry]}\n'
-        elif isinstance(_data, str):
-            msg += f'[+] {entry}\n{_global_dict[entry]}\n'
-        elif isinstance(_data, (bytes, bytearray)):
-            try:
-                msg += f'{_data.decode("utf-8", errors="ignore")}\n'
-            except Exception as e:
-                print(f'[-] Exception: {e}\n')
-                pass
-        file_out.write(msg)
+        for _entry in _data:
+            print(_entry)
+            file_out.write(f'{_entry}\n')
         file_out.close()
     print(f'[+] Report Generated. Please see the following location for converted files:\n[^] `/tmp/{folder_name}`\n')
 
